@@ -30,6 +30,7 @@ const exp3 = /^(?:https?:\/\/)?github\.com\/.+?\/.+?\/(?:info|git-).*$/i
 const exp4 = /^(?:https?:\/\/)?raw\.(?:githubusercontent|github)\.com\/.+?\/.+?\/.+?\/.+$/i
 const exp5 = /^(?:https?:\/\/)?gist\.(?:githubusercontent|github)\.com\/.+?\/.+?\/.+$/i
 const exp6 = /^(?:https?:\/\/)?github\.com\/.+?\/.+?\/tags.*$/i
+const exp7 = /^api\/.*$/i
 
 /**
  * @param {any} body
@@ -62,7 +63,7 @@ addEventListener('fetch', e => {
 
 
 function checkUrl(u) {
-    for (let i of [exp1, exp2, exp3, exp4, exp5, exp6]) {
+    for (let i of [exp1, exp2, exp3, exp4, exp5, exp6, exp7]) {
         if (u.search(i) === 0) {
             return true
         }
@@ -85,6 +86,9 @@ async function fetchHandler(e) {
     path = urlObj.href.substr(urlObj.origin.length + PREFIX.length).replace(/^https?:\/+/, 'https://')
     if (path.search(exp1) === 0 || path.search(exp5) === 0 || path.search(exp6) === 0 || path.search(exp3) === 0 || path.search(exp4) === 0) {
         return httpHandler(req, path)
+    } else if (path.search(exp7) === 0) {
+        path = path.replace(/^api\//, 'https://api.github.com/')
+        return httpHandler(req, path)
     } else if (path.search(exp2) === 0) {
         if (Config.jsdelivr) {
             const newUrl = path.replace('/blob/', '@').replace(/^(?:https?:\/\/)?github\.com/, 'https://cdn.jsdelivr.net/gh')
@@ -96,6 +100,8 @@ async function fetchHandler(e) {
     } else if (path.search(exp4) === 0) {
         const newUrl = path.replace(/(?<=com\/.+?\/.+?)\/(.+?\/)/, '@$1').replace(/^(?:https?:\/\/)?raw\.(?:githubusercontent|github)\.com/, 'https://cdn.jsdelivr.net/gh')
         return Response.redirect(newUrl, 302)
+    } else if (path == '' || path == '/') {
+        return Response.redirect('https://github.com/hacs-china', 302)
     } else {
         return fetch(ASSET_URL + path)
     }
@@ -151,6 +157,7 @@ function httpHandler(req, pathname) {
  * @param {RequestInit} reqInit
  */
 async function proxy(urlObj, reqInit) {
+    // console.log('proxy', urlObj.href)
     const res = await fetch(urlObj.href, reqInit)
     const resHdrOld = res.headers
     const resHdrNew = new Headers(resHdrOld)
@@ -178,4 +185,3 @@ async function proxy(urlObj, reqInit) {
         headers: resHdrNew,
     })
 }
-
